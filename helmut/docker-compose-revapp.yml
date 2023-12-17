@@ -1,0 +1,132 @@
+version: "3.4"
+
+volumes:
+  revapp_mongodb:
+
+networks:
+  revapp:
+    driver: overlay
+
+services:
+  traefik:
+    image: repo.moovit24.de:443/revapp-traefik:1.0.0.2
+    command: traefik --configFile=/etc/traefik-ssl/traefik.toml
+    restart: always
+    depends_on:
+      - revapp-backend
+      - revapp-frontend
+    networks:
+      - revapp
+    ports:
+     - target: 80
+       published: 80
+       protocol: tcp
+       mode: host
+     - target: 443
+       published: 443
+       protocol: tcp
+       mode: host
+    volumes:
+      #- /root/traefik/certs/:/certs
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  revapp-backend:
+    image: repo.moovit24.de:443/revapp-backend:1.0.0.31
+     restart: always
+     environment:
+      MONGODB: mongodb://root:bitte@mongodb:27017/rushes?authMechanism=SCRAM-SHA-1&authSource=admin
+      RABBITMQ: amqp://guest:guest@rabbitmq:5672/
+      STORAGE_PATH: /storage
+      LDAP_API: http://ldap:8079/api/v1
+     volumes: 
+        - /Volumes/DEV/Rushes:/storage
+     depends_on:
+        - mongodb
+        - rabbitmq
+     networks:
+       - revapp
+    
+  revapp-frontend:
+    image: repo.moovit24.de:443/revapp-frontend:1.0.0.23
+    restart: always
+    networks:
+      - revapp
+
+  ldap:
+    image: repo.moovit24.de:443/ldap:1.0.0.4
+    restart: always
+    networks: 
+      - revapp
+    depends_on:
+      - revapp-backend
+
+  worker:
+    image: repo.moovit24.de:443/file-upload-worker:1.0.0.12
+    restart: always
+    environment:
+      STORAGE_PATH: /storage
+      BACKEND_API: http://revapp-backend:8104/api/v1
+    networks: 
+      - revapp
+    volumes: 
+        - /Volumes/DEV/Rushes:/storage
+    depends_on:
+      - revapp-backend
+
+
+  mongoadmin:
+    image: repo.moovit24.de:443/mcc_mongodb_admin:4.0.1.1
+    restart: always
+    networks:
+      - revapp
+    depends_on:
+      - mongodb
+    ports:
+      - 8199:8199
+
+  mongodb:
+    image: repo.moovit24.de:443/mcc_mongodb:4.0.1.0
+    restart: always
+    container_name: mcc_mongodb
+    ports:
+      - 27017:27017
+    networks:
+      - revapp
+    volumes:
+      - revapp_mongodb:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: bitte
+  
+  mongobackup:
+    image: repo.moovit24.de:443/mcc_mongodb_backup:4.1.0.4
+    restart: always
+    networks:
+      - revapp
+    volumes:
+       - /tmp:/backup
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USER: root
+      MONGODB_PASS: bitte
+      CRON_TIME: "0 */4 * * *"
+      MAX_BACKUPS:  180
+      INIT_BACKUP: "true"
+      
+  rabbitmq:
+    image: repo.moovit24.de:443/mcc_rabbitmq:latest
+    restart: always
+    container_name: mcc_rabbitmq
+    #environment:
+      #RABBITMQ_DEFAULT_USER: root
+      #RABBITMQ_DEFAULT_PASS: bitte 
+    #ports:
+    #  - 15674:15674
+      #- 15672:15672
+      #- 5672:5672
+    networks:
+      - revapp
+

@@ -1,0 +1,78 @@
+{
+  "id": "6565543600cd1e00019a603b",
+  "name": "2023_MELT_SEARCH_wk_11-48",
+  "extension": "prproj",
+  "tag": "",
+  "path": "U:\\helmut\\Projects\\Media Admin\\Melt Projects\\2023_MELT_SEARCH_wk_\\2023_MELT_SEARCH_wk_11-48\\Premiere Pro\\Projectfile\\2023_MELT_SEARCH_wk_11-48.prproj",
+  "group": "Media Admin",
+  "category": "Melt Projects",
+  "template": "2023_MELT_SEARCH_wk_",
+  "size": 0,
+  "status": {
+    "status": "LOCKED",
+    "unlockAble": true,
+    "forceLock": false,
+    "lockedBy": "andrew.lucero",
+    "active": true,
+    "progress": -2
+  },
+  "metadata": [
+    {
+      "id": "623c7bb62f4f4e0001f5389c",
+      "name": "Vidicore CollectionID",
+      "value": "COLLECTION-VX-183",
+      "type": "STRING",
+      "filterable": true,
+      "readonly": true,
+      "mandatory": false,
+      "preresolve": false,
+      "disabled": false,
+      "hide": false
+    }
+  ],
+  "modifyDate": "2023-11-27T18:45:31Z",
+  "createDate": "2023-11-27T18:45:10Z",
+  "personal": false,
+  "creator": {
+    "id": "6564eb8494335c0001e61e99",
+    "username": "andrew.lucero",
+    "displayname": "Andrew Lucero",
+    "email": "andrew.lucero@nfl.com",
+    "lastLogin": "2023-11-27T17:30:24Z",
+    "isConnected": true,
+    "isFlowUser": false,
+    "isRenderNode": true,
+    "isActiveDirectoryUser": false,
+    "isOktaUser": false,
+    "role": "ADMIN",
+    "groups": [],
+    "products": [
+      "FX",
+      "IO",
+      "CO",
+      "HK"
+    ],
+    "custom": {
+      "panel_io": {
+        "searchFilter": []
+      },
+      "panel_fx": {
+        "searchFilter": []
+      },
+      "panel_co": {
+        "searchFilter": []
+      }
+    },
+    "ipAddress": "10.217.146.204",
+    "os": "win",
+    "hostname": "LA-MM104",
+    "clientVersion": "4.2.0.35",
+    "clientSessionToken": "8c126b94-ab4e-474b-9b76-cf50125403a5",
+    "issuer": "https://prdvlarvh01.us.nfl.net",
+    "failedLoginAttempts": 0
+  },
+  "lastModifiedBy": "Andrew Lucero",
+  "customId": {
+    "vidicore": "COLLECTION-VX-183"
+  }
+}

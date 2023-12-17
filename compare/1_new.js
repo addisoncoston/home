@@ -1,190 +1,196 @@
-var AWS = require('aws-sdk');
-// AWS.config.update({region: 'us-west-2'});
-var s3 = new AWS.S3({
-  signatureVersion: 'v4'
-});
-var sns = new AWS.SNS();
-const CryptoJS = require('crypto-js');
-
-const { Table } = require("dynamo-light");
-const db = new Table("LA-Media-Admin-API");
-var timecodes = require('node-timecodes');
-const Timecode = require('smpte-timecode')
-var msToTimecode = require('ms-to-timecode');
-
-const srtparsejs = require('srtparsejs');
-var path = require('path');
-const fs = require('fs');
-
-module.exports.srtConvert = async (event) => {
-
-  console.log(JSON.stringify(event));
-
-  let inputBucket, inputKey, gate, newSrt, outputKey, snsTopic, jobId, dbData, encryptedKey, secret;
-  outputBucket = process.env.bucket;
-  snsTopic =  process.env.snsTopic;
-  // secret = await readFromLibraryTable('Nagurski', 'Ekey')
-
-  encryptedKey = await encrypt(process.env.apiKey)
-  console.log(29, encryptedKey)
-
-  gate = false;
+module.exports.format = async event => {
+  console.log(JSON.stringify(event))
+  let timecodes, smpte, request, items, frame_rate, obj, bucket, key, region, uri, runToggle, transcripts, formattedArvato, formattedText, rawText, formattedTextAvid, errLog, newSrt;
 
   await setVar(event)
-  .then((res) => {
-
-    inputKey = res.inputKey;
-    inputBucket = res.inputBucket;
-    jobId = path.parse(inputKey).name;
-
-    if(inputKey.includes('.srt') && inputKey.includes(encryptedKey)){
-      gate = true;
-    } 
-
-  })
-  .catch(async (err) => {
-    console.log(13, err)
-
-    await publishError("srtConvert43")
-      .catch((err) => {
-        console.log(45, err)
-      })
-
-  })
-
-  if(gate){
-    await getItemData(encryptedKey, jobId)
-    .then((res) => {
-      dbData = res;
+    .then(result => {
+      //setvar set successfully
     })
-    .catch(async (err) => {
-      console.log(45, err)
-      gate = false;
-
-      await publishError("srtConvert43")
-      .catch((err) => {
-        console.log(459, err)
-      })
-
+    .catch(err => {
+      //setvar failed
+      console.log(676, err)
+      errLog = err
+      runToggle = false;
     })
 
-    outputKey = "output/" + dbData.item_id + '.srt'
-    console.log(25, outputBucket, inputKey, outputKey)
-    console.log(dbData)
+  if(runToggle == false){return {statusCode: 200, body: JSON.stringify(errLog)}}
 
+  if(path.extname(key) != '.json'){
+    return {
+      statusCode: 200,
+      body: 'ignoring file'
+    }
   }
 
-  if(gate){
-
-    await getObject(inputBucket, inputKey)
-    .then((res) => {
-      newSrt = res
+  await setSpeakers(items)
+    .then(result => {
+      //speakers set successfully
     })
-    .catch(async (err) => {
-      console.log(39, err)
-      await publishError("srtConvert79")
-      .catch((err) => {
-        console.log(459, err)
+    .catch(err => {
+      //speakers set failed
+      console.log(678, err)
+      errLog = err
+      runToggle = false;
+    })
+  
+  if(runToggle == false){return {statusCode: 500, body: JSON.stringify(errLog)}}
+
+  transcripts = await formatTransText(obj, bucket, key);
+  formattedText = transcripts.formattedText;
+  rawText = transcripts.rawText;
+  formattedTextAvid = await formatTransAvid(obj, bucket, key, '5');;
+  formattedArvato = await formatArvato(obj, bucket, key);
+
+  newSrt = await convertSrt(newSrt, 30, obj.fps)
+
+  await s3Put(path.dirname(key) + '/' + path.parse(key).name + '.txt',  bucket, formattedText)
+
+  await s3Put(path.dirname(key) + '/' + path.parse(key).name + '_arvato.txt',  bucket, JSON.stringify(formattedArvato))
+
+  await s3Put(path.dirname(key) + '/' + path.parse(key).name + '.raw',  bucket, JSON.stringify(rawText))
+
+  await s3Put(path.dirname(key) + '/' + path.parse(key).name + '_avid.txt',  bucket, formattedTextAvid)
+  
+  await s3Put(path.dirname(key) + '/' + path.parse(key).name + '.srt',  bucket, newSrt)
+
+  await updateItem(obj)
+
+  ///If the call comes from Scaletech then call their API to update status
+  if(obj.hasOwnProperty("uploaded_on")){
+
+    await updateScaleTechHotFix(process.env.scaleTechKey, obj.serviceId, obj.status, obj.uploaded_on)
+      .then(data => {
+        console.log('706, scaletech db update success', data)
       })
-    })
-
-    await addLineBreaks(newSrt, 30, dbData)
-    .then((res) => {
-      newSrt = res;
-    })
-    .catch(async (err) => {
-      console.log(47, err)
-
-      await publishError("srtConvert91")
-      .catch((err) => {
-        console.log(459, err)
+      .catch(err => {
+        console.log(709, err)
       })
-    })
+      
+  }
 
-    await putObject(newSrt, outputBucket, outputKey)
-    .then((res) => {
-      console.log("put success- " + outputKey, res)
-    })
-    .catch(async (err) => {
-      console.log(53, err)
-
-      await publishError("srtConvert43")
-      .catch((err) => {
-        console.log(459, err)
-      })
-    })
-
-    // putting temp file to 24 hour purge 
-    await putObject(newSrt, "nfl-24hour-purge", "combine/" + path.parse(outputKey).name + ".srt")
-    .then((res) => {
-      console.log("put success- " + outputKey)
-    })
-    .catch(async (err) => {
-      console.log(53, err)
-
-      await publishError("srtconvert118")
-      .catch((err) => {
-        console.log(459, err)
-      })
-
-    })
-
-
-    await makeLink("nfl-24hour-purge", "combine/" + path.parse(outputKey).name + ".srt", dbData.User, dbData.Service)    
-    .then((res) => {
-      console.log("makelink success")
-    })
-    .catch(async (err) => {
-      console.log(53, err)
-
-      await publishError("134srtconvert")
-      .catch((err) => {
-        console.log(459, err)
-      })
-
-    })
-
-
-    } else {
-      return {}
-    }
-
+  return {
+      statusCode:200,
+      body: JSON.stringify(event)
+  }
 
   function setVar(input){
-    return new Promise((resolve, reject) => {
-      let obj = {
-        bucket: "",
-        key: ""
+    return new Promise(async (resolve, reject) => {
+      
+      timecodes = require('./node_modules/node-timecodes/dist/index.js');
+      smpte = require('smpte-timecode');
+      event = JSON.parse(input.Records[0].Sns.Message);
+      bucket = event.Records[0].s3.bucket.name;
+      key = event.Records[0].s3.object.key;
+      if(key.split('.')[0] == ""){
+        reject('ignoring')
       }
+      user = event.Records[0].s3.object.key.split('/')[0];
+      region = event.Records[0].awsRegion;
+      uri = 'https://' + event.Records[0].s3.bucket.name + '.s3.' + event.Records[0].awsRegion + '.amazonaws.com/' + event.Records[0].s3.object.key;
+
+      request = {User: user, Service: path.basename(key).split('.')[0]}; 
+      console.log(743, request)
+      items = await db.get(request);
+      console.log(745, items)
+      items = items.Item;
+      if(items == null){
+        reject('no item')
+      }
+
+      frame_rate = parseFloat(items.FrameRate);
+      timecodes.constants.framerate = frame_rate;
+      start_timecode = parseFloat(timecodes.toSeconds(items.StartTimecode)) //smpte(items.StartTimecode, frame_rate);
+      
+      obj = {
+        status: 'Formatted',
+        user: user,
+        serviceId: path.parse(key).name,
+        readable: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '.txt',
+        arvato: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '_arvato.txt',
+        raw: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '.raw',
+        json: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '.json',
+        avid: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '_avid.txt',
+        srt: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '.srt',
+        vtt: 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + path.dirname(key) + '/' + path.parse(key).name + '.vtt',
+        tc: start_timecode,
+        fps: frame_rate,
+        chunksize: parseFloat(items.ChunkSize),
+        timeCounter: 0,
+        confidenceCutoff: 0.6
+      }
+
+      if(items.hasOwnProperty("uploaded_on")){
+        obj.uploaded_on = items.uploaded_on;
+      }
+
+      resolve()
+      
+    })
+  }
+ 
+  function setSpeakers(input){
+    return new Promise((resolve, reject) => {
 
       try {
 
-        event = JSON.parse(input.Records[0].Sns.Message);
-        obj.inputBucket = event.Records[0].s3.bucket.name;
-        obj.inputKey = event.Records[0].s3.object.key;
-        obj.topic = input.Records[0].Sns.TopicArn
-        // user = key.split('/')[0];
-        // region = event.Records[0].awsRegion;
-        // uri = 'https://' + bucket + '.s3.' + region + '.amazonaws.com/' + key;
-        resolve(obj)
+        for(i in Object.keys(input)){
+          let v = Object.keys(input)[i];
+          console.log(68, v, input[v])
+          
+          if(v.includes('Speaker')){
+            if(input[v] != ""){
+              obj[v.toLowerCase()]= input[v]
+            }
+            
+          }
+      
+        }
+        resolve()
+
       }
       catch(err){
-        console.log(79, err)
         reject(err)
       }
-      
 
-      
     })
   }
-  function addLineBreaks(inputString, threshold, dbData){
-    return new Promise((resolve, reject) => {
 
+  function updateItem(input){
+    return new Promise(async (resolve, reject) => {
+      console.log(919, input)
+      await db.update(
+        {User: input.user, Service: input.serviceId},
+        {
+          Status: input.status,
+          TranscriptReadable: input.readable,
+          TranscriptRaw: input.raw,
+          TranscriptArvato: input.arvato,
+          TranscriptJson: input.json,
+          TranscriptAvid: input.avid,
+          TranscriptSRT: input.srt,
+          TranscriptVTT: input.vtt
+        }
+      )
+      .then(data => {
+        resolve(data)
+      })
+      .catch(err => {
+        console.log(err)
+        reject(err)
+      })
+
+    })
+  }
+
+  function convertSrt(inputString, threshold, frame_rate){
+    return new Promise((resolve, reject) => {
+      
     let srt = inputString;
     let newSrt = [];
     let newNew = [];
     
-    let frameRate = parseFloat(dbData.frame_rate);
+    // let frameRate = parseFloat(dbData.frame_rate);
+    let frameRate = parseFloat(frame_rate);
 
     try {
         srt = srtparsejs.parse(srt);        
@@ -467,540 +473,4 @@ module.exports.srtConvert = async (event) => {
     })
   }
 
-  function getObject(bucket, key){
-
-    return new Promise((resolve, reject) => {
-
-    s3.getObject({
-        Bucket: bucket,
-        Key: key
-    }, (err, data) => {
-        if (err) {
-            reject(err)
-        }
-            // console.log(data.Body.toString())
-            resolve(data.Body.toString())
-        })
-    })
-    
-
-  };
-
-  function putObject(data, bucket, key){
-    return new Promise((resolve, reject) => {
-
-      var params = {
-        Body: data, 
-        Bucket: bucket, 
-        Key: key
-      };
-      s3.putObject(params, function(err, data) {
-        if (err){
-          console.log(err, err.stack)
-          reject(err)
-        } else {
-          console.log(data)
-          resolve(data)
-        }
-      });
-
-    })
-  }
-
-  function getItemData(apiKey, jobId){
-    return new Promise(async (resolve, reject) => {
-      console.log(255, apiKey, jobId)
-  
-      let data
-      
-      await db.get({
-          "User": apiKey,
-          "Service": jobId
-      })
-      .then((res) => {
-        
-        data = res;
-        console.log(2138, data)
-        resolve(data.Item)
-      })
-      .catch((err) => {
-        console.log(2141, err)
-        reject(err)
-      })
-   
-    })
-  }
-
-  function makeLink(bucket, key, user, service){
-    return new Promise( async (resolve, reject) => {
-
-      var params = {Bucket: bucket, Key: key, Expires: 86400};
-      var url = s3.getSignedUrl('getObject', params);
-      
-      await db.update({
-        User: user,
-        Service: service
-      },
-      {
-        TempLink: url
-      })
-      .then((data) => {
-        // dbData = data.Item
-        console.log(622, data)
-        resolve(data)
-      })
-      .catch((err) => {
-        reject(err)
-      })
-
-
-    })
-  }
-
-}
-
-module.exports.submitTranscription = async (event) => {
-
-  var axios = require('axios');
-  var http = require('https');
-  console.log(JSON.stringify(event));
-  
-  let putUrl, gate, data, bucket, key, fileName, internalFlow, subfolder;
-
-  internalFlow = false;
-  gate = false;
-
-  await setVar(event)
-    .then(async (res) => {
-      console.log(29, "Variables Set");
-      bucket = res.bucket;
-      key = res.key.replace(/\+/g, ' ');
-      fileName = path.parse(key).name;
-      subfolder = res.subfolder
-      console.log(260, key, fileName);
-      gate = true;
-
-      if(res.subfolder.split('/').length != 1){
-        internalFlow = true;
-      }
-
-    })
-    .catch(async (err) => {
-      console.log(457, err);
-      gate = false;
-      await publishError(JSON.stringify(err))
-      .catch((err) => {
-        console.log(459, err)
-      })
-    })
-
-  if(gate){
-
-    await getUploadUrl(fileName, internalFlow, subfolder)
-    .then((res) => {
-      putUrl = res;
-      gate = true;
-    })
-    .catch(async (err) => {
-      console.log(err)
-      gate = false;
-
-      await publishError("submitTranscription474")
-      .catch((err) => {
-        console.log(459, err)
-      })
-
-    })
-  
-  }
-
-  if(gate){
-
-    await getDataS3(bucket, key)
-    .then((res) => {
-      console.log(50, "get data success")
-      data = res;
-      gate = true;
-    })
-    .catch(async (err) => {
-      console.log(292, err)
-      gate = false;
-      
-      await publishError("submitTranscription495")
-      .catch((err) => {
-        console.log(459, err)
-      })
-    })
-
-  }
-  
-  if(gate){
-
-    await putFile(putUrl, data)
-    .then((res) => {
-      console.log(59, "put file success")
-      gate = true;
-    })
-    .catch(async (err) => {
-      console.log(52, err)
-      gate = false;
-
-      await publishError("submitTranscription514")
-      .catch((err) => {
-        console.log(459, err)
-      })
-
-    })
-
-  }
-
-  function putFile(url, filePath) {
-    return new Promise((resolve, reject) => {
-      const fileStream = fs.createReadStream(filePath);
-  
-      const options = {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': fs.statSync(filePath).size,
-        },
-      };
-      console.log(664, options)
-  
-      const req = http.request(url, options, (res) => {
-        if (res.statusCode === 200) {
-          resolve('File uploaded successfully!');
-        } else {
-          reject(new Error(`Failed to upload file. Status code: ${res.statusCode}`));
-        }
-      });
-  
-      req.on('error', (error) => {
-        reject(new Error(`Error uploading file: ${error.message}`));
-      });
-  
-      fileStream.pipe(req);
-    });
-  }
-
-
-  // function putFile(inputUrl, filePath){
-  //   return new Promise(async (resolve, reject) => {
-
-  //     // let config = {
-  //     //   method: 'put',
-  //     //   url: inputUrl,
-  //     //   // headers: { 
-  //     //   //   'x-api-key': process.env.apiKey 
-  //     //   //   // 'Content-Type': 'video/mp4'
-  //     //   // },
-  //     //   data : fs.readFileSync(filePath)
-  //     // };
-
-  //     await axios.put(inputUrl, fs.readFileSync(filePath))
-  //     .then(function (response) {
-  //       console.log(717, response);
-
-  //       resolve(response)
-  //     })
-  //     .catch(function (error) {
-  //       console.log(335, error);
-  //       reject(error)
-  //     });
-      
-
-  //   })
-  // }
-
-  async function getDataS3(bucket, key) {
-    try {
-      const params = {
-        Bucket: bucket,
-        Key: key
-      };
-      console.log(686, params);
-    
-      const data = await s3.getObject(params).promise();
-      console.log(355, data);
-    
-      const filePath = path.join('/tmp/', path.parse(key).base);
-      console.log(729, filePath)
-      fs.writeFileSync(filePath, data.Body);
-      console.log(731, filePath)
-      return filePath;
-    } catch (err) {
-      console.log(352, err);
-      throw err;
-    }
-  }
-
-  // function getDataS3(bucket, key){
-  //   return new Promise((resolve, reject) => {
-  
-  //     var params = {
-  //       Bucket: bucket, 
-  //       Key: key
-  //      };
-  
-  //      s3.getObject(params, function(err, data) {
-  //       if (err) {
-  //         console.log(352, err);
-  //         reject(err);
-  //       } else {
-  //         console.log(355, data);
-  //         resolve(data.Body)
-  //       }
-  //     });
-  
-  //   })
-  // }
-
-  function getUploadUrl(input, internal, subfolder){ 
-    return new Promise((resolve, reject) => {
-
-      // replace illegal characters in input variable
-      input = input.replace(/[\/:*?"<>|]/g, '');
-
-      var config = {
-        method: 'get',
-        url: process.env.getUploadLink + "?item_id=" + input,
-        headers: { 
-          'x-api-key': process.env.apiKey
-        }
-      };
-
-      let folderParam = subfolder.split('/')[1]
-      let theSplit = folderParam.split("_")
-      let item = theSplit[1]
-      let val = theSplit.pop()
-      console.log(775, item, val)
-
-      if(internal){
-
-        config.url = process.env.getUploadLink + "?item_id=" + folderParam + "/" + input
-
-        if(item == "vocab"){
-          console.log(776)
-          config.url += "&vocab=true";
-        } else {
-          config.url += "&vocab=false";
-        }
-
-        if(item == "model"){
-          console.log(788)
-          config.url += "&model=true";
-        } else {
-          config.url += "&model=false";
-        }
-
-        if(item == "vocabmodel"){
-          console.log(792)
-          config.url += "&vocab=true&model=true";
-        }
-
-        if(item == "filter"){
-          console.log(803)
-          config.url += "&filter=true";
-        } else {
-          config.url += "&filter=false";
-        }
-
-        if(item == "umfilter"){
-          console.log(809)
-          config.url += "&umfilter=true";
-        } else {
-          config.url += "&umfilter=false";
-        }
-
-      }
-
-      console.log(321, config)
-    
-      axios(config)
-      .then(async (res) => {
-        console.log(153, JSON.stringify(res.data));
-        putUrl = res.data.upload_url;
-        resolve(putUrl)
-    
-      })
-      .catch(function (error) {
-        console.log(error);
-        reject(error)
-      });
-
-    })
-  }
-
-  function setVar(input){
-    return new Promise((resolve, reject) => {
-
-      function setSubfolder() {
-
-        let obj = { bucket: "", key: "", subfolder: "" };
-
-        const event = JSON.parse(input.Records[0].Sns.Message);
-        obj.bucket = event.Records[0].s3.bucket.name;
-        obj.key = event.Records[0].s3.object.key;
-
-        const keyParts = obj.key.split('/');
-        
-        if (keyParts.length > 1) {
-          obj.subfolder = keyParts.slice(0, -1).join('/');
-        }
-
-        return obj;
-      }
-
-      resolve(setSubfolder());
-    })
-  }
-};
-
-module.exports.notifications = async (event) => {
-  var axios = require('axios');
-  let key, bucket, folder, id, dbData, user, slackMessage, subject, message;
-
-  subject = event.Records[0].Sns.Subject;
-  message = event.Records[0].Sns.Message;
-  console.log(859, JSON.stringify(event))
-  console.log('subject', subject)
-
-  if(subject.includes("S3")){
-    console.log(862, subject)
-    key = JSON.parse(message).Records[0].s3.object.key;
-    bucket = process.env.bucket
-    user = key.split("/")[0];
-    folder = key.split("/")[1];
-    id = key.split("/")[2];
-  
-    if(key.includes(process.env.hashed)){
-      console.log(610, key);
-      ///initial upload is successful.
-  
-      await db.get({
-        User: process.env.hashed,
-        Service: id
-      })
-      .then((data) => {
-        dbData = data.Item
-        console.log(622, dbData)
-      })
-  
-      slackMessage = "Caption Processing: `" + dbData.item_id + "` `" + dbData.Service + "`";
-   
-      await postSlack(slackMessage)
-      .then((res) => {
-  
-        console.log(620, res)
-  
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-      
-      
-      
-    } else {
-      return {}
-    }
-
-  } else if(subject == "error"){
-
-    message = "<!here> Caption Error: `" + message + "`";
-    
-    await postSlack(message)
-    .then((res) => {
-  
-      console.log(656, res)
-
-    })
-    .catch((err) => {
-      console.log(660, err)
-    })
-
-  }
-
-
-
-
-  function postSlack(input){
-    return new Promise((resolve, reject) => {   
-
-      let config = {
-        method: 'put',
-        url: process.env.slackWebhook,
-        data : {text: input}
-      };
-
-      axios(config)
-      .then(function (response) {
-        console.log(JSON.stringify(response.data));
-
-        resolve(response)
-      })
-      .catch(function (error) {
-        console.log(638, error);
-        reject(error)
-      });
-
-    })
-  }
-
-}
-
-function publishError(msg){
-  return new Promise ((resolve, reject) => {
-
-    var params = {
-      Message: msg, /* required */
-      Subject: 'error',
-      TopicArn: process.env.errTopic
-    };
-    sns.publish(params, function(err, data) {
-      if (err) {
-        console.log(705, err, err.stack); // an error occurred
-        reject(err)
-      } else {
-        console.log(708, data);           // successful response
-        resolve(data)
-      }
-    });
-
-  })
-
-}
-
-async function encrypt(text){
-  // const secretKey = await readFromLibraryTable("Nagurski", "Ekey");  
-  // return CryptoJS.AES.encrypt(text, secretKey).toString()
-  return CryptoJS.MD5(text).toString()
-}
-
-async function decrypt(text){
-  const secretKey = await readFromLibraryTable("Nagurski", "Ekey");
-  var bytes  = CryptoJS.AES.decrypt(text, secretKey);
-  return bytes.toString(CryptoJS.enc.Utf8)
-};
-
-async function readFromLibraryTable(category, id) {
-  try {
-    // Define the parameters for the query
-
-    const library = new Table("Library")
-
-    const params = {
-      'Category': category,
-      'ID': id
-
-    };
-
-    // Execute the query
-    const result = await library.query(params);
-    
-    // Return the queried items
-    return result.Items[0].Data;
-  } catch (error) {
-    console.error('Error reading from Library table:', error);
-    throw error;
-  }
 }

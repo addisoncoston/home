@@ -1,0 +1,457 @@
+version: "3.4"
+
+volumes:
+  mcc_mongodb:
+
+networks:
+  mcc:
+    driver: overlay
+
+services:
+  traefik:
+    image: repo.moovit24.de:443/mcc_traefik:4.0.5.3
+    #command: traefik --configFile=/etc/traefik-ssl/traefik.toml
+    restart: always
+    depends_on:
+      - hw
+      - fx
+      - co
+      - hk
+      - io
+      - users
+      - streams
+      - preferences
+      - metadata
+      - logging
+      - amqp
+      - license
+      - language
+      - cronjob
+      - rabbitmq
+    networks:
+      - mcc
+    ports:
+      - mode: host
+        protocol: tcp
+        published: 80
+        target: 80
+      - mode: host
+        protocol: tcp
+        published: 443
+        target: 443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      #- /root/certs:/certs
+      - /var/run/docker.sock:/var/run/docker.sock
+   
+  hp:
+     image: repo.moovit24.de:443/mcp_hp:4.0.6.15
+     restart: always
+     networks:
+       - mcc
+
+  hw:
+     image: repo.moovit24.de:443/mcp_hw:4.0.6.16
+     restart: always
+     networks:
+       - mcc
+
+  fx:
+     image: repo.moovit24.de:443/mcp_fx:4.0.6.5
+     restart: always
+     environment:
+       parameters: 
+        --spring.servlet.multipart.max-file-size=100MB
+        --spring.servlet.multipart.max-request-size=100MB
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+     volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt:/Volumes
+     networks:
+       - mcc
+     depends_on:
+       - mongodb
+       - preferences
+
+  io:
+     image: repo.moovit24.de:443/mcp_io:4.0.6.4
+     restart: always
+     environment:
+       parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+     volumes:
+       - /etc/localtime:/etc/localtime:ro
+       - /mnt:/Volumes
+     networks:
+       - mcc
+     depends_on:
+       - mongodb
+       - preferences
+
+  co:
+     image: repo.moovit24.de:443/mcp_co:4.0.6.8
+     restart: always
+     environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+     volumes:
+       - /etc/localtime:/etc/localtime:ro
+       - /mnt:/Volumes
+     networks:
+       - mcc
+     depends_on:
+       - mongodb
+
+  hk:
+     image: repo.moovit24.de:443/mcp_hk:4.0.6.4
+     restart: always
+     environment:
+       parameters:
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx
+        --mcc.co.url=http://co:8101/v1/co
+        --mcc.io.url=http://io:8102/v1/io
+        --mcc.users.url=http://users:8000/v1/members
+        --mcc.stream.url=http://streams:8001/v1/streams
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+     volumes:
+      - /etc/localtime:/etc/localtime:ro
+     networks:
+       - mcc
+     depends_on:
+       - mongodb
+
+  users:
+     image: repo.moovit24.de:443/mcc_users:4.0.6.3
+     restart: always
+     environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+     volumes:
+      - /etc/machine-id:/etc/unique-id
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt:/Volumes
+     networks:
+       - mcc
+     depends_on:
+       - mongodb
+
+  streams:
+     image: repo.moovit24.de:443/mcc_streams:4.0.6.25
+     restart: always
+     environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+     volumes:
+      - /etc/machine-id:/etc/unique-id
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt:/Volumes
+     networks:
+       - mcc
+     depends_on:
+       - rabbitmq
+       - mongodb
+
+  preferences:
+    image: repo.moovit24.de:443/mcc_preferences:4.0.6.2
+    restart: always
+    environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+      - users
+
+  metadata:
+    image: repo.moovit24.de:443/mcc_metadata:4.0.6.2
+    restart: always
+    environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+      
+  logging:
+    image: repo.moovit24.de:443/mcc_logging:4.0.6.1
+    restart: always
+    environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+
+  amqp:
+    image: repo.moovit24.de:443/mcc_amqp:4.0.6.2
+    restart: always
+    environment:
+      parameters: 
+        --spring.rabbitmq.host=rabbitmq
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc
+    depends_on:
+      - rabbitmq
+
+  license:
+    image: repo.moovit24.de:443/mcc_license:4.0.6.4
+    restart: always
+    environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/machine-id:/machine-id
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+
+  language:
+    image: repo.moovit24.de:443/mcc_language:4.0.6.1
+    restart: always
+    environment:
+      parameters: 
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx 
+        --mcc.co.url=http://co:8101/v1/co 
+        --mcc.io.url=http://io:8102/v1/io 
+        --mcc.users.url=http://users:8000/v1/members 
+        --mcc.stream.url=http://streams:8001/v1/streams 
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+ 
+  cronjob:
+    image: repo.moovit24.de:443/mcc_cronjob:4.0.6.1
+    restart: always
+    environment:
+      parameters:
+        --spring.data.mongodb.host=mongodb
+        --spring.rabbitmq.host=rabbitmq
+        --mcc.fx.url=http://fx:8100/v1/fx
+        --mcc.co.url=http://co:8101/v1/co
+        --mcc.io.url=http://io:8102/v1/io
+        --mcc.hk.url=http://hk:8103/v1/hk
+        --mcc.users.url=http://users:8000/v1/members
+        --mcc.stream.url=http://streams:8001/v1/streams
+        --mcc.preference.url=http://preferences:8002/v1/preferences
+        --mcc.metadata.url=http://metadata:8003/v1/metadata
+        --mcc.logging.url=http://logging:8004/v1/logging/helmut
+        --mcc.amqp.url=http://amqp:8005/v1/amqp/send
+        --mcc.license.url=http://license:8006/v1/license
+        --mcc.language.url=http://language:8007/v1/language
+        --mcc.cronjob.url=http://cronjob:8008/v1/cronjob
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: repo.moovit24.de:443/mcc_mongodb:4.0.7.8
+    restart: always
+    #ports:
+      #- 27017:27017
+    networks:
+      - mcc
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - mcc_mongodb:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: bitte
+
+  mongobackup:
+    image: repo.moovit24.de:443/mcc_mongodb_backup:4.1.0.4
+    restart: always
+    networks:
+      - mcc
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/helmut/backup:/backup
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USER: root
+      MONGODB_PASS: bitte
+      CRON_TIME: "0 */4 * * *"
+      MAX_BACKUPS:  180
+      INIT_BACKUP: "true"
+      
+  mongoadmin:
+    image: repo.moovit24.de:443/mcc_mongodb_admin:4.0.1.1
+    restart: always
+    networks:
+      - mcc
+    depends_on:
+      - mongodb
+   #ports:
+      #- 8199:8199
+
+  # AMQP
+  rabbitmq:
+    image: repo.moovit24.de:443/mcc_rabbitmq:4.0.5.1
+    restart: always
+    #expose:
+    #  - 15672
+    #ports:
+      #- 15674:15674
+      #- 15672:15672
+      #- 5672:5672
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - mcc

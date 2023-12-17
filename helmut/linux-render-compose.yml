@@ -1,0 +1,27 @@
+version: "3.7"
+
+networks:
+  mcc:
+    driver: overlay
+
+services:
+ helmutclient:
+   
+   image: repo.moovit24.de:443/mcp_hc:4.2.0.0
+   restart: always
+   volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /root/render1.helmut.autologin:/root/MoovIT GmbH/HelmutClient/helmut.auto.login
+        - /mnt/helmut:/Volumes/helmut
+        #- /ffmpeg-static/ffmpeg:/usr/local/bin/ffmpeg
+   networks:
+        - mcc
+   deploy:
+      placement:
+        constraints:
+          - node.hostname == helmut01
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2500M
+

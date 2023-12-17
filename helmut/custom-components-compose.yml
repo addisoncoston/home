@@ -1,0 +1,71 @@
+version: "3.4"
+
+services:
+  connect:
+    image: repo.moovit24.de:443/evsconnector:0.0.33
+    restart: always
+    environment: 
+      parameters:
+        --xsquare.ip=10.188.1.85
+        --xsquare.user=administrator
+        --xsquare.psw=evs
+        --ipd.ip=10.202.12.83
+        --ipd.user=administrator
+        --ipd.psw=evs
+    ports:
+      - 8084:8084
+  
+  xml-generator:
+    image: repo.moovit24.de:443/helmutxmlapi:0.0.13-VPMS
+    restart: always
+    container_name: xml_generator
+    volumes:
+        - /mnt/helmut:/Volumes/helmut
+        - /samba/helmut:/Users/Shared/Helmut24
+    networks:
+        - mcc  
+    depends_on:
+        - io
+
+  teams_connector:
+    image: repo.moovit24.de:443/teams-connector:0.9.4
+    restart: always
+    environment:
+      parameters:
+       --de.moovit.teamsnotify.graph.security.clientId=8e8d6894-09ae-4003-bf29-e2d2b6d44bff
+       --de.moovit.teamsnotify.graph.security.authority=https://login.microsoftonline.com/c731b2e8-8386-4d40-9845-292bd5d1de44/
+    ports:
+       - 8471:8471
+
+  smd:
+    image: repo.moovit24.de:443/mcp_smd:4.0.1.4
+    restart: always
+    expose:
+      - 8010
+    ports:
+      - 8010:8010
+    volumes:
+      - /mnt/Media_1:/Volumes/Media_1
+    networks:
+      - mcc
+    
+  vpmsConnector:
+    image: repo.moovit24.de:443/vpmsconnector:0.0.6
+    restart: always
+    environment:
+      parameters:
+        --vpms.service.address=http://sp-fbpkons-vfu01.rbb-online.de:10160/CheckInService
+    ports:
+      - 8085:8085
+
+
+
+  cosmo-import:
+    image: repo.moovit24.de:443/cosmo-import:1.0.0
+    ports:
+      - "10695:80"
+  fx-create:
+    image: repo.moovit24.de:443/fx-create:1.0.0
+    ports:
+      - "11762:80"
+

@@ -1,0 +1,99 @@
+{
+  "id": "656e55cf00cd1e00019a6041",
+  "name": "2023_wk11_phi_kc_espn-49",
+  "extension": "prproj",
+  "tag": "",
+  "path": "U:\\helmut\\Projects\\Media Admin\\Melt Projects\\2023 Melt Template\\2023_wk11_phi_kc_espn-49\\Premiere Pro\\Projectfile\\2023_wk11_phi_kc_espn-49.prproj",
+  "group": "Media Admin",
+  "category": "Melt Projects",
+  "template": "2023 Melt Template",
+  "size": 0,
+  "status": {
+    "status": "LOCKED",
+    "unlockAble": true,
+    "forceLock": false,
+    "lockedBy": "admin.andrew",
+    "active": true,
+    "progress": -2
+  },
+  "metadata": [
+    {
+      "id": "623c7bb62f4f4e0001f5389c",
+      "name": "Vidicore CollectionID",
+      "value": "COLLECTION-VX-195",
+      "type": "STRING",
+      "filterable": true,
+      "readonly": true,
+      "mandatory": false,
+      "preresolve": false,
+      "disabled": false,
+      "hide": false
+    }
+  ],
+  "modifyDate": "2023-12-04T14:42:23Z",
+  "createDate": "2023-12-04T14:42:23Z",
+  "personal": false,
+  "creator": {
+    "id": "656e559894335c0001e61e9b",
+    "username": "admin.andrew",
+    "displayname": "Admin Andrew",
+    "email": "andrew.lucero1@nfl.com",
+    "lastLogin": "2023-12-04T14:41:50Z",
+    "isConnected": true,
+    "isFlowUser": false,
+    "isRenderNode": false,
+    "isActiveDirectoryUser": false,
+    "isOktaUser": false,
+    "role": "ADMIN",
+    "groups": [
+      {
+        "id": "654d55e794335c0001e61e97",
+        "name": "FX"
+      },
+      {
+        "id": "654d27d694335c0001e61e96",
+        "name": "Gameday"
+      },
+      {
+        "id": "6565123f94335c0001e61e9a",
+        "name": "Media Admin"
+      },
+      {
+        "id": "654d273394335c0001e61e95",
+        "name": "News"
+      },
+      {
+        "id": "654c07b694335c0001e61e92",
+        "name": "Shows"
+      }
+    ],
+    "products": [
+      "FX",
+      "IO",
+      "CO",
+      "HK"
+    ],
+    "custom": {
+      "panel_io": {
+        "searchFilter": []
+      },
+      "panel_fx": {
+        "searchFilter": []
+      },
+      "panel_co": {
+        "searchFilter": []
+      }
+    },
+    "ipAddress": "10.217.146.205",
+    "os": "win",
+    "hostname": "LA-MM105",
+    "clientVersion": "4.2.0.35",
+    "clientSessionToken": "92b72c3a-fc3a-4c32-b20e-5bf8fcdd9109",
+    "issuer": "https://prdvlarvh01.us.nfl.net",
+    "failedLoginAttempts": 0
+  },
+  "lastModifiedBy": "",
+  "customId": {
+    "vidicore": "COLLECTION-VX-195"
+  }
+}
